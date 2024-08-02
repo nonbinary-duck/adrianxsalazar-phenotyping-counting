@@ -78,7 +78,7 @@ from detectron2.utils.events import (
 from detectron2 import model_zoo
 from detectron2.data import DatasetCatalog
 from detectron2.data.datasets import register_coco_instances
-from detectron2.data import DatasetCatalog, MetadataCatalog,
+from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 from detectron2.utils.visualizer import ColorMode
 from detectron2.utils.visualizer import Visualizer
@@ -189,7 +189,7 @@ def main(dataset, model, model_output, anchor_size, aspect_ratios, roi, supressi
       dictionary_counts[str(image_name)]=round(abs(prediction),3)
 
       #Save the images with the infered bounding boxes
-      if save_infered_images=True:
+      if save_infered_images==True:
           cv2_imshow(out.get_image()[:, :, ::-1])
 
           #make directory to store the visual results
@@ -216,7 +216,7 @@ def main(dataset, model, model_output, anchor_size, aspect_ratios, roi, supressi
 
     #Saving the counting and detection results.
     np.savetxt(os.path.join(cfg.OUTPUT_DIR,'results_folder',"counting_restults.txt"),count_results,delimiter=',')
-    np.savetxt(os.path.join(cfg.OUTPUT_DIR,'results_folder',"detection_restults.txt"),ap_result,delimiter=',')
+    np.savetxt(os.path.join(cfg.OUTPUT_DIR,'results_folder',"detection_restults.txt"),[ap_result],delimiter=',')
 
     return print ('testing done')
 
