@@ -24,6 +24,10 @@ class create_density_dataset():
         self.beta=beta
 
     def gaussian_filter_density(self, gt):
+        """
+        Apply a gaussian filter to a density map (gt)
+        """
+        
         density = np.zeros(gt.shape, dtype=np.float32)
         gt_count = np.count_nonzero(gt)
         if gt_count == 0:
@@ -53,21 +57,27 @@ class create_density_dataset():
         return density
 
 
-    def create_map(self, image_format='.png', txt_format=True):
+    def create_map(self, txt_format=True):
+        """
+        Create density maps for a dataset
+        """
 
-        img_paths = []
-        path=self.dataset_path
-        for img_path in glob.glob(os.path.join(path, '*'+image_format)):
-            img_paths.append(img_path)
+        json_file = open(self.dataset_path, "r");
+        dataset = json.load(json_file);
+        json_file.close();
 
-        img_paths=img_paths[:1]
-        print(img_paths)
+        # path=self.dataset_path
+        # for img_path in glob.glob(os.path.join(path, '*'+image_format)):
+        #     img_paths.append(img_path)
 
-        for img_path in img_paths:
+        for image in dataset["images"]:
+            img_path = image["file_name"];
+
             print (img_path)
             img= plt.imread(img_path)
             k = np.zeros((img.shape[0],img.shape[1]))
-            gt=np.loadtxt(img_path.replace('.png','.txt'))
+            print(img_path + ".txt");
+            gt=np.loadtxt(img_path + ".txt");
 
             #The format of the gorund truth is an array with the super pixels e.g.
             #[[x1,y1][x2,y2]]
@@ -80,19 +90,22 @@ class create_density_dataset():
 
             #k = self.gaussian_filter_density(k)
 
-            x=img_path.replace('.png','gt.h5')
+            x=img_path + "gt.h5";
             print(x)
-            #with h5py.File(img_path.replace('.jpg','_gt.h5'), 'w') as hf:
-                #hf['density'] = k
+            with h5py.File(x, 'w') as hf:
+                hf['density'] = k
 
 
-        def visualise_density_map(self,path_image):
-            plt.imshow(Image.open(path_image))
-            plt.show()
-            gt_file = h5py.File(path_image.replace('.png','.h5'),'r')
-            groundtruth = np.asarray(gt_file['density'])
-            plt.imshow(groundtruth,cmap=CM.jet)
-            plt.show()
+    def visualise_density_map(self,path_image):
+        """
+        Show density plot with matplotlib
+        """
+        plt.imshow(Image.open(path_image))
+        plt.show()
+        gt_file = h5py.File(path_image.replace('.png','.h5'),'r')
+        groundtruth = np.asarray(gt_file['density'])
+        plt.imshow(groundtruth,cmap=CM.jet)
+        plt.show()
 
 
 if __name__ == '__main__':
