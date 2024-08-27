@@ -53,7 +53,7 @@ def main():
     args.batch_size    = 200 #26
     args.decay         = 5*1e-4
     args.start_epoch   = 0
-    args.epochs = 1000
+    args.epochs = 2500
     args.workers = 4
     args.seed = int(time.time())
     args.print_freq = 4
