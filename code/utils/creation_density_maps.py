@@ -6,7 +6,8 @@ import numpy as np
 import os
 import glob
 from matplotlib import pyplot as plt
-from scipy.ndimage.filters import gaussian_filter
+# from scipy.ndimage.filters import gaussian_filter
+
 import scipy
 import json
 from matplotlib import cm as CM
@@ -16,6 +17,10 @@ import torch
 from tqdm import tqdm
 import numpy as np
 import argparse
+
+import scipy.spatial
+from scipy.ndimage import gaussian_filter
+
 
 class create_density_dataset():
 
@@ -46,12 +51,12 @@ class create_density_dataset():
             pt2d[pt[1],pt[0]] = 1.
 
             #TODO modify this to include more neighbours also the average distance
-            if gt_count > 1:
+            if gt_count > 2:
                 sigma = (distances[i][1]+distances[i][2]+distances[i][3])*self.beta
             else:
                 sigma = np.average(np.array(gt.shape))/2./2. #case: 1 point
 
-            density += scipy.ndimage.filters.gaussian_filter(pt2d, sigma, mode='constant')
+            density += gaussian_filter(pt2d, sigma, mode='constant')
 
         print ('done.')
         return density
@@ -86,6 +91,7 @@ class create_density_dataset():
                 if int(gt[i][1])<img.shape[0] and int(gt[i][0])<img.shape[1]:
                     k[int(gt[i][1]),int(gt[i][0])]=1
 
+            print(img_path)
             k = self.gaussian_filter_density(k)
 
             x=img_path + ".gt.h5";
