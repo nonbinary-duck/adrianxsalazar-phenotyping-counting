@@ -39,7 +39,7 @@ class create_density_dataset():
             return density
 
         pts = np.array(list(zip(np.nonzero(gt)[1], np.nonzero(gt)[0])))
-        leafsize = 2048
+        leafsize = 3
         # build kdtree
         tree = scipy.spatial.KDTree(pts.copy(), leafsize=leafsize)
         # query kdtree

@@ -5,11 +5,12 @@ import numpy as np
 import h5py
 import cv2
 
+import math
+
 def load_data(img_path,train = True):
     #gt_path = img_path.replace('.png','.h5').replace('images','ground_truth')
-    gt_path = img_path.replace('.jpg','.h5')
-    img = Image.open(img_path).convert('RGB')
-    gt_file = h5py.File(gt_path,'r')
+    img = Image.open( os.path.join("all", img_path)).convert('RGB')
+    gt_file = h5py.File(os.path.join("all", img_path) + ".gt.h5",'r')
     target = np.asarray(gt_file['density'])
 
     # if img.size != (4032, 3024):
@@ -39,6 +40,6 @@ def load_data(img_path,train = True):
             target = np.fliplr(target)
             img = img.transpose(Image.FLIP_LEFT_RIGHT)
 
-    target = cv2.resize(target,(target.shape[1]/8,target.shape[0]/8),interpolation = cv2.INTER_CUBIC)*64
+    target = cv2.resize(target,(math.floor(target.shape[1]/8), math.floor(target.shape[0]/8)),interpolation = cv2.INTER_CUBIC)*64
 
     return img,target

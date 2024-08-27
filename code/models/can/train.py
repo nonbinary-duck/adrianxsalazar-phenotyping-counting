@@ -19,6 +19,9 @@ import cv2
 import dataset
 import time
 
+import math
+
+
 parser = argparse.ArgumentParser(description='PyTorch CANNet')
 
 parser.add_argument('train_json', metavar='TRAIN',
@@ -47,7 +50,7 @@ def main():
 
     args = parser.parse_args()
     args.lr = 1e-4
-    args.batch_size    = 10 #26
+    args.batch_size    = 200 #26
     args.decay         = 5*1e-4
     args.start_epoch   = 0
     args.epochs = 1000
@@ -58,12 +61,12 @@ def main():
     with open(args.train_json, 'r') as outfile:
         train_list = json.load(outfile)
 
-    print len(train_list)
+    print(f"Training images {len(train_list)}")
 
     with open(args.val_json, 'r') as outfile:
         val_list = json.load(outfile)
 
-    print len(val_list)
+    print(f"Validation images {len(val_list)}")
 
     torch.cuda.manual_seed(args.seed)
 
@@ -201,8 +204,8 @@ def validate(val_list, model, criterion):
 
     for i,(img, target) in enumerate(val_loader):
         h,w = img.shape[2:4]
-        h_d = h/2
-        w_d = w/2
+        h_d = math.floor(h/2)
+        w_d = math.floor(w/2)
         img_1 = Variable(img[:,:,:h_d,:w_d].cuda())
         img_2 = Variable(img[:,:,:h_d,w_d:].cuda())
         img_3 = Variable(img[:,:,h_d:,:w_d].cuda())
