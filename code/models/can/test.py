@@ -15,7 +15,6 @@ import json
 import matplotlib.image as mpimg
 from matplotlib import pyplot as plt
 from matplotlib import cm as c
-from google.colab import files
 plt.style.use('classic')
 
 
@@ -38,7 +37,7 @@ args = parser.parse_args()
 
 def save_dictionary(dictpath_json, dictionary_data):
     a_file = open(dictpath_json, "w")
-    json.dump(dictionary_data, a_file)
+    json.dump(dictionary_data, a_file, indent=4)
     a_file.close()
 
 with open(args.test_json, 'r') as outfile:
@@ -48,7 +47,7 @@ model = CANNet()
 
 model = model.cuda()
 
-checkpoint = torch.load(os.path.join(args.output,'model_best.pth.tar'))
+checkpoint = torch.load(os.path.join(args.output,'checkpoint.pth.tar'))
 model.load_state_dict(checkpoint['state_dict'])
 model.eval()
 
@@ -57,9 +56,9 @@ gt = []
 
 dictionary_counts={}
 
-for i in xrange(len(img_paths)):
-    plain_file=os.path.basename(img_paths[i])
-    img = transform(Image.open(img_paths[i]).convert('RGB')).cuda()
+for img_path in img_paths:
+    plain_file=os.path.basename(img_path)
+    img = transform(Image.open(os.path.join("all", img_path)).convert('RGB')).cuda()
     img = img.unsqueeze(0)
     h,w = img.shape[2:4]
     h_d = h/2
@@ -76,8 +75,8 @@ for i in xrange(len(img_paths)):
     entire_img=Variable(img.cuda())
     entire_den=model(entire_img)
     
-    pure_name = os.path.splitext(os.path.basename(img_paths[i]))[0]
-    gt_file = h5py.File(img_paths[i].replace('.png','.h5'))
+    pure_name = os.path.splitext(os.path.basename(img_path))[0]
+    gt_file = h5py.File(os.path.join("all", img_path) + ".gt.h5")
     groundtruth = np.asarray(gt_file['density'])
     
     ###################################################################
@@ -125,7 +124,7 @@ for i in xrange(len(img_paths)):
     plt.savefig(os.path.join(args.output,'visual_results','gt_original'+plain_file),bbox_inches='tight', pad_inches = 0,dpi=300)
     plt.close()
     
-    plt.imshow(mpimg.imread(img_paths[i]))
+    plt.imshow(mpimg.imread( os.path.join("all", img_path)))
     plt.gca().set_axis_off()
     plt.axis('off')
     plt.margins(0,0)
@@ -134,21 +133,22 @@ for i in xrange(len(img_paths)):
 
     #######################################################################
     
-#     pred_sum = density_1.sum()+density_2.sum()+density_3.sum()+density_4.sum()
-#     dictionary_counts[plain_file]=round(abs(pred_sum),3)
+    pred_sum = den.sum();#density_1.sum()+density_2.sum()+density_3.sum()+density_4.sum()
+    dictionary_counts[plain_file]={ "pred": float(pred_sum), "gt": float(np.sum(groundtruth)) };#round(abs(pred_sum),3)
 
-#     print (pred_sum)
+    print (f"For image {plain_file}\n  predicted: {pred_sum}, gt: {np.sum(groundtruth)}\n");
 
-#     pred.append(pred_sum)
+    pred.append(pred_sum)
 
-#     gt.append(np.sum(groundtruth))
+    gt.append(np.sum(groundtruth))
 
-# mae = mean_absolute_error(pred,gt)
-# rmse = np.sqrt(mean_squared_error(pred,gt))
 
-# save_dictionary(os.path.join(args.output,"dic_restults.json"),dictionary_counts)
+mae = mean_absolute_error(pred,gt)
+rmse = np.sqrt(mean_squared_error(pred,gt))
 
-# print 'MAE: ',mae
-# print 'RMSE: ',rmse
-# results=np.array([mae,rmse])
-# np.savetxt(os.path.join(args.output,"restults.txt"),results,delimiter=',')
+save_dictionary(os.path.join(args.output,"dic_restults.json"),dictionary_counts)
+
+print('MAE: ',mae)
+print('RMSE: ',rmse)
+results=np.array([mae,rmse])
+np.savetxt(os.path.join(args.output,"restults.txt"),results,delimiter=',')
