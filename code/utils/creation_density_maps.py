@@ -58,6 +58,7 @@ class create_density_dataset():
 
             density += gaussian_filter(pt2d, sigma, mode='constant')
 
+        print(f"original count: {np.sum(np.sum(gt))}, new: {np.sum(np.sum(density))}");
         print ('done.')
         return density
 
