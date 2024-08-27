@@ -1,33 +1,25 @@
 # importing libraries
 import h5py
-import scipy.io as io
-import PIL.Image as Image
+import PIL
 import numpy as np
 import os
-import glob
 from matplotlib import pyplot as plt
-from scipy.ndimage.filters import gaussian_filter
-import scipy
-import json
 from matplotlib import cm as CM
-#from image import *
-#from model import CSRNet
-import torch
-from tqdm import tqdm
 import numpy as np
 import argparse
+
+import random
 
 
 def visualise_density_map(path_image):
     """
     Show density plot with matplotlib
     """
-    plt.imshow(Image.open(path_image))
-    plt.show()
-    gt_file = h5py.File(path_image,'r')
-    groundtruth = np.asarray(gt_file['density'])
-    plt.imshow(groundtruth,cmap=CM.jet)
-    plt.show()
+    plt.subplot(2,1,1).imshow(PIL.Image.open(path_image));
+    
+    gt = np.asarray( h5py.File(path_image + ".gt.h5",'r')['density'] );
+    plt.subplot(2,1,2).imshow(gt,cmap=CM.hot);
+    plt.show();
 
 
 if __name__ == '__main__':
@@ -40,4 +32,16 @@ if __name__ == '__main__':
     # if len(args.b) > 1:
     #     density_map=create_density_dataset(args.i, beta=args.b)
     # else:
-    visualise_density_map(args.i)
+    if (os.path.isdir(args.i)):
+        print("picking random file from dir");
+        
+        subfiles = os.listdir(os.path.dirname(args.i));
+
+        img_files = [];
+        for file in subfiles:
+            if (os.path.splitext(file)[1] == ".png"):
+                img_files.append( os.path.join(args.i, file));
+    
+        visualise_density_map(img_files[ random.randint(0, len(img_files)) ]);
+    else:
+        visualise_density_map(args.i)

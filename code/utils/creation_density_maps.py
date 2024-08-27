@@ -71,29 +71,26 @@ class create_density_dataset():
         #     img_paths.append(img_path)
 
         for image in dataset["images"]:
-            img_path = image["file_name"];
+            img_path = os.path.join("all", image["file_name"]);
 
-            print (img_path)
             img= plt.imread(img_path)
             k = np.zeros((img.shape[0],img.shape[1]))
-            print(img_path + ".txt");
             gt=np.loadtxt(img_path + ".txt");
 
             #The format of the gorund truth is an array with the super pixels e.g.
             #[[x1,y1][x2,y2]]
-            if txt_format== False:
-                gt = mat["image_info"][0,0][0,0][0]
+            # if txt_format== False:
+            #     gt = mat["image_info"][0,0][0,0][0]
 
             for i in range(0,len(gt)):
                 if int(gt[i][1])<img.shape[0] and int(gt[i][0])<img.shape[1]:
                     k[int(gt[i][1]),int(gt[i][0])]=1
 
-            #k = self.gaussian_filter_density(k)
+            k = self.gaussian_filter_density(k)
 
-            x=img_path + "gt.h5";
-            print(x)
+            x=img_path + ".gt.h5";
             with h5py.File(x, 'w') as hf:
-                hf['density'] = k
+                hf['density'] = k;
 
 
     def visualise_density_map(self,path_image):
