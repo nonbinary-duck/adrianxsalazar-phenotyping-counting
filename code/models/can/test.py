@@ -105,7 +105,7 @@ for img_path in img_paths:
     plain_file=plain_file.replace('.jpg','.png')
     plain_file=plain_file.replace('.jpeg','.png')
     
-    plt.imshow(den,cmap = c.jet)
+    plt.imshow(den,cmap = c.plasma)
     plt.gca().set_axis_off()
     plt.axis('off')
     plt.margins(0,0)
@@ -117,7 +117,7 @@ for img_path in img_paths:
     # plt.savefig(os.path.join(args.output,'visual_results',plain_file),bbox_inches='tight')
     # plt.close()
 
-    plt.imshow(groundtruth,cmap = c.jet)
+    plt.imshow(groundtruth,cmap = c.plasma)
     plt.gca().set_axis_off()
     plt.axis('off')
     plt.margins(0,0)
