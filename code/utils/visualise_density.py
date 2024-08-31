@@ -15,10 +15,10 @@ def visualise_density_map(path_image):
     """
     Show density plot with matplotlib
     """
-    plt.subplot(2,1,1).imshow(PIL.Image.open(path_image));
+    plt.subplot(1,2,1).imshow(PIL.Image.open(path_image));
     
     gt = np.asarray( h5py.File(path_image + ".gt.h5",'r')['density'] );
-    plt.subplot(2,1,2).imshow(gt,cmap=CM.hot);
+    plt.subplot(1,2,2).imshow(gt,cmap=CM.plasma);
     plt.show();
 
 
