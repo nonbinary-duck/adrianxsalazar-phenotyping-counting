@@ -12,6 +12,7 @@ def load_data(img_path,train = True):
     img = Image.open( os.path.join("all", img_path)).convert('RGB')
     gt_file = h5py.File(os.path.join("all", img_path) + ".gt.h5",'r')
     target = np.asarray(gt_file['density'])
+    img = img.resize(target.shape)
 
     # if img.size != (4032, 3024):
     #     img=img.resize((4032, 3024))
