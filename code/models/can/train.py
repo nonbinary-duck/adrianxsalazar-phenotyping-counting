@@ -21,6 +21,11 @@ import time
 
 import math
 
+import matplotlib.pyplot as plt
+
+plt_losses = [];
+plt_valmae = [];
+
 
 parser = argparse.ArgumentParser(description='PyTorch CANNet')
 
@@ -186,6 +191,9 @@ def train(train_list, model, criterion, optimizer, epoch):
                   .format(
                    epoch, i, len(train_loader), batch_time=batch_time,
                    data_time=data_time, loss=losses))
+            
+        # Append the average loss at the end of each epoch
+        if ((len(train_loader) - 1) == i): plt_losses.append(losses.avg);
 
 def validate(val_list, model, criterion):
     print ('begin val')
@@ -222,6 +230,21 @@ def validate(val_list, model, criterion):
     mae = mae/len(val_loader)
     print(' * MAE {mae:.3f} '
               .format(mae=mae))
+
+    # Plot the MAE and loss for this epoch
+    plt_valmae.append(mae);
+
+    plt.subplot(2,1,1).plot(range(len(plt_valmae)), plt_valmae);
+    plt.subplot(2,1,1).set_ylabel("MAE");
+    plt.subplot(2,1,1).set_xlabel("Epoch");
+    plt.subplot(2,1,2).plot(range(len(plt_losses)), plt_losses);
+    plt.subplot(2,1,2).set_ylabel("Loss");
+    plt.subplot(2,1,2).set_xlabel("Epoch");
+    plt.tight_layout();
+    plt.savefig("training-progress.png");
+    # non-blocking from https://stackoverflow.com/a/33050617
+    plt.draw();
+    plt.pause(0.1);
 
     return mae
 
