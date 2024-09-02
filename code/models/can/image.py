@@ -45,7 +45,7 @@ def load_data(img_path,train = True):
     # resize_ratio = 10.6;
     # print(f"before img {img.size}, gt {target.shape}, file {os.path.join('all', img_path)}");
     # target = cv2.resize(target,(math.floor(target.shape[1]/resize_ratio), math.floor(target.shape[0]/resize_ratio)),interpolation = cv2.INTER_CUBIC)*64
-    target = cv2.resize(target,(132, 176),interpolation = cv2.INTER_CUBIC)*64
+    target = cv2.resize(target,(132, 176),interpolation = cv2.INTER_CUBIC)*113.7776356
     # print(f"after img {img.size}, gt {target.shape}");
 
     return img,target
