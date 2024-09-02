@@ -55,10 +55,10 @@ def main():
 
     args = parser.parse_args()
     args.lr = 1e-4
-    args.batch_size    = 10 #26
+    args.batch_size    = 3 #26
     args.decay         = 5*1e-4
     args.start_epoch   = 0
-    args.epochs = 2500
+    args.epochs = 1000
     args.workers = 4
     args.seed = int(time.time())
     args.print_freq = 4
