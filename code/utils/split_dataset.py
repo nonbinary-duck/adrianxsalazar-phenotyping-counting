@@ -47,20 +47,24 @@ if __name__ == '__main__':
     images   = dataset["images"];
     imgcount = len(images);
     np.random.shuffle(images);
-    print(f"Splitting the {imgcount} images");
+    print(f"Splitting the {imgcount} shuffled images where {names} {split}");
 
     last_img = 0;
     for i, name in enumerate(names):
         count=math.ceil(split[i] * imgcount);
 
         with open(name, 'w') as out:
+            simages = [img["file_name"] for img in images[ last_img:(last_img+(count))]];
+
             json.dump(
-                [img["file_name"] for img in images[ last_img:(last_img+(count))]],
+                simages,
                 out
             );
+            
             out.write('\n');
+            print(f"Saved images (exclusive larger bound) {last_img}:{(last_img+(count))} (count of {len(simages)}) to {name}");
         
         last_img += count;
-    
+
 
 
