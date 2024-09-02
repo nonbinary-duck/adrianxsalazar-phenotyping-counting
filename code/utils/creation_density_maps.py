@@ -21,11 +21,15 @@ import argparse
 import scipy.spatial
 from scipy.ndimage import gaussian_filter
 
+import math
+
 
 class create_density_dataset():
 
-    def __init__(self, dataset_path, beta=0.1):
+    def __init__(self, dataset_path, class_count = 1, downsize_ratio = 8.0, beta=0.1):
         self.dataset_path=dataset_path
+        self.class_count=class_count
+        self.downsize_ratio=downsize_ratio
         self.beta=beta
 
     def gaussian_filter_density(self, gt):
@@ -72,34 +76,53 @@ class create_density_dataset():
         dataset = json.load(json_file);
         json_file.close();
 
-        # path=self.dataset_path
-        # for img_path in glob.glob(os.path.join(path, '*'+image_format)):
-        #     img_paths.append(img_path)
 
-        for image in dataset["images"][0:1]:
+        for image in dataset["images"]:
+            # Get the image
             img_path = os.path.join(os.path.split(self.dataset_path)[0], "all", image["file_name"]);
-            # img_path = image["file_name"];
+            img      = plt.imread(img_path);
+            imshape  = (math.floor(img.shape[0] / self.downsize_ratio), math.floor(img.shape[1] / self.downsize_ratio));
 
-            img= plt.imread(img_path)
-            k = np.zeros((img.shape[0],img.shape[1]))
-            gt=np.loadtxt(img_path + ".txt");
 
-            #The format of the ground truth is an array with the super pixels e.g.
-            #[[x1,y1][x2,y2]]
-            # if txt_format== False:
-            #     gt = mat["image_info"][0,0][0,0][0]
+            k = np.zeros(imshape);
 
-            for i in range(0,len(gt)):
-                if int(gt[i][1])<img.shape[0] and int(gt[i][0])<img.shape[1]:
-                    k[int(gt[i][1]),int(gt[i][0])]=1
+            minik_ratio = (1 if (self.class_count == 1) else math.ceil( math.pow(self.class_count, 0.5) ));
+            minik_shape = np.multiply(imshape, math.pow(minik_ratio, -1)).astype(int);
 
-            print(img_path)
-            k = self.gaussian_filter_density(k)
+            for c in range(self.class_count):
+                # Make an image with a single 1.0 value pixel per bbox centroid
+                minik = np.zeros(minik_shape);
+                gt=np.loadtxt(img_path + (f"_c{c}.txt" if (self.class_count != 1) else ".txt"));
 
+                for i in range(0,len(gt)):
+                    if int(gt[i][1])<img.shape[0] and int(gt[i][0])<img.shape[1]:
+                        minik[int(math.floor(gt[i][1] / (self.downsize_ratio * minik_ratio))),int(math.floor(gt[i][0] / (self.downsize_ratio * minik_ratio)))]=1.0
+
+                # Use the gaussian kernel
+                print(img_path)
+                minik = self.gaussian_filter_density(minik);
+
+                # Combine this local class in with the entire set of classes
+                krow = math.floor(c / minik_ratio);
+                kcol = c - (krow * minik_ratio);
+
+                kxmin = krow * minik_shape[0];
+                kxmax = (krow+1) * minik_shape[0];
+                kymin = kcol * minik_shape[1];
+                kymax = (kcol+1) * minik_shape[1];
+
+                # print(f"krow {krow}, kcol {kcol}");
+                # print(f"kxmin {kxmin}, kxmax {kxmax}");
+                # print(f"kymin {kymin}, kymax {kymax}");
+                # print(f"minik.shape {minik.shape}, minik_shape {minik_shape}");
+                # print(f"k.shape {k.shape}");
+                
+                k[kxmin:kxmax, kymin:kymax] = minik;
+
+            # Save completed density map
             x=img_path + ".gt.h5";
             with h5py.File(x, 'w') as hf:
                 hf.create_dataset("density", data=k, compression='gzip', compression_opts=5);
-                # hf['density'] = k;
 
 
     def visualise_density_map(self,path_image):
@@ -122,6 +145,20 @@ if __name__ == '__main__':
         required=True,
         help='the path to the directory containing the Json file');
 
+    parser.add_argument('-c',
+        metavar='class_count',
+        required=False,
+        default=1,
+        type=int,
+        help='Count of classes');
+    
+    parser.add_argument('-d',
+        metavar='downsize_ratio',
+        required=False,
+        default=8.0,
+        type=float,
+        help='Downsizing scale');
+
     # parser.add_argument('-b',
     #     metavar='beta or the gaussian filter',
     #     required=False,
@@ -132,5 +169,5 @@ if __name__ == '__main__':
     # if len(args.b) > 1:
     #     density_map=create_density_dataset(args.i, beta=args.b)
     # else:
-    density_map=create_density_dataset(args.i)
+    density_map=create_density_dataset(args.i, args.c, args.d)
     density_map.create_map()
