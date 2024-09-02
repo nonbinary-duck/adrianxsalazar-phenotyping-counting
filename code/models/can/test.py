@@ -47,7 +47,7 @@ model = CANNet()
 
 model = model.cuda()
 
-checkpoint = torch.load(os.path.join(args.output,'checkpoint.pth.tar'))
+checkpoint = torch.load(os.path.join(args.output,'model_best.pth.tar'))
 model.load_state_dict(checkpoint['state_dict'])
 model.eval()
 
@@ -58,7 +58,7 @@ dictionary_counts={}
 
 for img_path in img_paths:
     plain_file=os.path.basename(img_path)
-    img = transform(Image.open(os.path.join("all", img_path)).convert('RGB')).cuda()
+    img = transform(Image.open(os.path.join("all", img_path)).convert('RGB').resize((1056, 1408), Image.BICUBIC)).cuda()
     img = img.unsqueeze(0)
     h,w = img.shape[2:4]
     h_d = h/2
