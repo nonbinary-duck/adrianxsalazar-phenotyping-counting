@@ -163,17 +163,19 @@ def train(train_list, model, criterion, optimizer, epoch):
     model.train()
     end = time.time()
 
-    for i,(img, target)in enumerate(train_loader):
+    for i,(img, target) in enumerate(train_loader):
         data_time.update(time.time() - end)
 
         img = img.cuda()
         img = Variable(img)
-        output = model(img)[:,0,:,:]
+        output = model(img)[:,:,:,:]
 
         target = target.type(torch.FloatTensor).cuda()
         target = Variable(target)
 
-        loss = criterion(output, target)
+        print(f"OUTPUT SHAPE {output.shape}")
+        print(f"TARGET SHAPE {target[:, :, :].shape}")
+        loss = criterion(output, target[:, :, :])
 
         losses.update(loss.item(), img.size(0))
         optimizer.zero_grad()
