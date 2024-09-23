@@ -17,6 +17,11 @@ def load_net(fname, net):
 
 
 def save_checkpoint(state, is_best, output_path, filename='checkpoint.pth.tar'):
+    if (not os.path.isdir(output_path)):
+        if (os.path.exists(output_path)):
+            raise RuntimeError(f"Output path [{output_path}] exists but is NOT directory, fatal error");
+        os.mkdir(output_path);
+
     torch.save(state, os.path.join(output_path,filename))
     if is_best:
         print("saving_best")
