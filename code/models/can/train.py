@@ -178,6 +178,11 @@ def calc_mae(loader, model):
 
 def train(train_list, model, criterion, optimizer, epoch):
 
+    print(f"== Epoch {epoch} start");
+
+    # Record epoch time
+    epoch_head = time.time();
+
     losses = AverageMeter()
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -235,14 +240,21 @@ def train(train_list, model, criterion, optimizer, epoch):
                    epoch, i, len(train_loader), batch_time=batch_time,
                    data_time=data_time, loss=losses))
             
+    print(f"All but MAE at {time.time() - epoch_head:.3f} seconds into epoch");
     # Append the average loss at the end of each epoch
     # Also, calculate MAE
     model.eval();
     metrics_train.append([losses.avg, calc_mae(train_loader, model)]);
 
+    print(f"Finished epoch {epoch}, lasting {time.time() - epoch_head:.3f} seconds");
+    
+
 
 def validate(val_list, model, criterion):
     print ('begin val')
+    # Record timings
+    val_head = time.time();
+
     val_loader = torch.utils.data.DataLoader(
     dataset.listDataset(val_list,
                    shuffle=False,
@@ -298,6 +310,9 @@ def validate(val_list, model, criterion):
     plt.savefig("training-progress.png");
     # non-blocking from https://stackoverflow.com/a/33050617
     plt.draw();
+
+    print(f" = Finished validation lasting {time.time() - val_head:.3f} seconds");
+
     plt.pause(0.1);
 
     return mae
