@@ -20,7 +20,9 @@ def visualise_density_map(path_image):
     gt = np.asarray( h5py.File(path_image + ".gt.h5",'r')['density'] );
 
     print(np.sum(gt));
-    gt *= 255/np.max(gt);
+    gt *= 1/np.max(gt);
+
+    print("SHAPE", gt.shape);
     
     plt.subplot(1,2,2).imshow(gt);
     plt.show();

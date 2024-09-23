@@ -17,6 +17,8 @@ from matplotlib import pyplot as plt
 from matplotlib import cm as c
 plt.style.use('classic')
 
+import shutil
+
 
 transform=transforms.Compose([
                        transforms.ToTensor(),transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -47,6 +49,17 @@ model = CANNet()
 
 model = model.cuda()
 
+
+
+vis_path = os.path.join(args.output,'visual_results');
+
+if (os.path.isdir(vis_path)): shutil.rmtree(vis_path, True);
+
+if (os.path.exists(vis_path)):
+    raise RuntimeError(f"Output path [{vis_path}] exists but is NOT directory, fatal error");
+os.mkdir(vis_path);
+
+
 checkpoint = torch.load(os.path.join(args.output,'model_best.pth.tar'))
 model.load_state_dict(checkpoint['state_dict'])
 model.eval()
@@ -58,11 +71,11 @@ dictionary_counts={}
 
 for img_path in img_paths:
     plain_file=os.path.basename(img_path)
-    img = transform(Image.open(os.path.join("all", img_path)).convert('RGB').resize((1056, 1408), Image.BICUBIC)).cuda()
+    img = Image.open(os.path.join("all", img_path)).convert('RGB');
+    # Half (and floor) image size to save VRAM
+    img = img.resize( (int(img.size[0]/2), int(img.size[1]/2)), Image.BICUBIC );
+    img = transform(img).cuda();
     img = img.unsqueeze(0)
-    h,w = img.shape[2:4]
-    h_d = h/2
-    w_d = w/2
     # img_1 = Variable(img[:,:,:h_d,:w_d].cuda())
     # img_2 = Variable(img[:,:,:h_d,w_d:].cuda())
     # img_3 = Variable(img[:,:,h_d:,:w_d].cuda())
@@ -74,6 +87,7 @@ for img_path in img_paths:
     
     entire_img=Variable(img.cuda())
     entire_den=model(entire_img)
+    entire_den=entire_den.detach().cpu();
     
     pure_name = os.path.splitext(os.path.basename(img_path))[0]
     gt_file = h5py.File(os.path.join("all", img_path) + ".gt.h5")
@@ -88,7 +102,8 @@ for img_path in img_paths:
     # density_1_2=np.asarray(density_2.detach().cpu().reshape(density_2.detach().cpu().shape[2],density_2.detach().cpu().shape[3]))
     # density_1_3=np.asarray(density_3.detach().cpu().reshape(density_3.detach().cpu().shape[2],density_3.detach().cpu().shape[3]))
     # density_1_4=np.asarray(density_4.detach().cpu().reshape(density_4.detach().cpu().shape[2],density_4.detach().cpu().shape[3]))
-    den=np.asarray(entire_den.detach().cpu().reshape(entire_den.detach().cpu().shape[2],entire_den.detach().cpu().shape[3]))
+    # print("DENSHAPE", entire_den.shape)
+    den=np.asarray(entire_den.reshape(entire_den.shape[1], entire_den.shape[2], entire_den.shape[3]))
     
     # img[:,:,:h_d,:w_d]=density_1
     # img[:,:,:h_d,w_d:]=density_2
@@ -101,34 +116,67 @@ for img_path in img_paths:
     
     #print (temp.shape)
     
-    #replace image formats
-    plain_file=plain_file.replace('.jpg','.png')
-    plain_file=plain_file.replace('.jpeg','.png')
+    # #replace image formats
+    # plain_file=plain_file.replace('.jpg','.png')
+    # plain_file=plain_file.replace('.jpeg','.png')
+
     
-    plt.imshow(den,cmap = c.plasma)
+    # Remove the extension and store it
+    plain_file, plain_file_ext = os.path.splitext(plain_file);
+    
+    # Clip to range 0-inf.
+    visden = np.add(den, np.abs(np.min(den)) );
+    # Clip to range 0-1
+    visden = np.multiply(visden, 1/np.max(visden));
+    # Swap from cxy to xyc
+    visden = np.transpose(visden, (1, 2, 0));
+    # Plot it
+    plt.imshow(visden);
+    # Save it
     plt.gca().set_axis_off()
     plt.axis('off')
     plt.margins(0,0)
-    plt.savefig(os.path.join(args.output,'visual_results',plain_file),bbox_inches='tight', pad_inches = 0,dpi=300)
+    plt.savefig(os.path.join(vis_path, plain_file)+"_output.png",bbox_inches='tight', pad_inches = 0,dpi=300)
     plt.close()
+
+    # Save individually the channels
+    for i in range(3):
+        plt.imshow(den[i], cmap=c.plasma);
+        plt.gca().set_axis_off()
+        plt.axis('off')
+        plt.margins(0,0)
+        plt.savefig(os.path.join(vis_path, plain_file)+f"_output_{i}.png",bbox_inches='tight', pad_inches = 0,dpi=300)
+        plt.close()
+
+        # Do colour (isolate the channel so you can see the composite components)
+        visden_temp = np.zeros(visden.shape);
+        visden_temp[:, :, i] = visden[:, :, i];
+
+        plt.imshow(visden_temp);
+        plt.gca().set_axis_off()
+        plt.axis('off')
+        plt.margins(0,0)
+        plt.savefig(os.path.join(vis_path, plain_file)+f"_output_{['r','g','b'][i]}.png",bbox_inches='tight', pad_inches = 0,dpi=300)
+        plt.close()
     
     # plt.imshow( density_1_1,cmap = c.jet)
     # plt.axis('off')
-    # plt.savefig(os.path.join(args.output,'visual_results',plain_file),bbox_inches='tight')
+    # plt.savefig(os.path.join(vis_path, plain_file),bbox_inches='tight')
     # plt.close()
 
-    plt.imshow(groundtruth,cmap = c.plasma)
+    plt.imshow(np.multiply(groundtruth, 1/np.max(groundtruth)));
     plt.gca().set_axis_off()
     plt.axis('off')
     plt.margins(0,0)
-    plt.savefig(os.path.join(args.output,'visual_results','gt_original'+plain_file),bbox_inches='tight', pad_inches = 0,dpi=300)
+    plt.savefig(os.path.join(vis_path, plain_file + "_gt")+".png",bbox_inches='tight', pad_inches = 0,dpi=300)
     plt.close()
     
-    plt.imshow(mpimg.imread( os.path.join("all", img_path)))
+    # This code needs to be replaced by automatically rendering and linking the boxed images into the dataset
+    plt.imshow(mpimg.imread( os.path.join("../", img_path + ".boxed.jpg")))
     plt.gca().set_axis_off()
     plt.axis('off')
     plt.margins(0,0)
-    plt.savefig(os.path.join(args.output,'visual_results','original'+plain_file),bbox_inches='tight', pad_inches = 0, dpi=300)
+    plt.savefig(os.path.join(vis_path, plain_file + '_input' + plain_file_ext),bbox_inches='tight', pad_inches = 0, dpi=300)
     plt.close()
 
     #######################################################################

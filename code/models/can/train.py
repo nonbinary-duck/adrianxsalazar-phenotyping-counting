@@ -22,9 +22,11 @@ import time
 import math
 
 import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 
-plt_losses = [];
-plt_valmae = [];
+metrics_train = [];
+metrics_val = [];
 
 
 parser = argparse.ArgumentParser(description='PyTorch CANNet')
@@ -139,6 +141,41 @@ def main():
 
     print ('Train process finished')
 
+
+def append_metrics(mset, mae, loss):
+    # Append taken from https://stackoverflow.com/a/24284680
+    mset.loc[-1] = [mae, loss]  # adding a row
+    mset.index = mset.index + 1  # shifting index
+    mset = mset.sort_index()  # sorting by index
+
+def calc_mae(loader, model):
+    """
+    Calculate the mean average error
+    The model needs to be put in eval mode BEFORE running this
+    """
+
+    mae = 0
+
+    for i,(img, target) in enumerate(loader):
+        h,w = img.shape[2:4]
+        h_d = math.floor(h/2)
+        w_d = math.floor(w/2)
+        img_1 = Variable(img[:,:,:h_d,:w_d].cuda())
+        img_2 = Variable(img[:,:,:h_d,w_d:].cuda())
+        img_3 = Variable(img[:,:,h_d:,:w_d].cuda())
+        img_4 = Variable(img[:,:,h_d:,w_d:].cuda())
+        density_1 = model(img_1).data.cpu().numpy()
+        density_2 = model(img_2).data.cpu().numpy()
+        density_3 = model(img_3).data.cpu().numpy()
+        density_4 = model(img_4).data.cpu().numpy()
+
+        pred_sum = density_1.sum()+density_2.sum()+density_3.sum()+density_4.sum()
+
+        mae += abs(pred_sum-target.sum())
+
+    mae = mae/len(loader)
+    return mae;
+
 def train(train_list, model, criterion, optimizer, epoch):
 
     losses = AverageMeter()
@@ -151,7 +188,7 @@ def train(train_list, model, criterion, optimizer, epoch):
                        transform=transforms.Compose([
                        transforms.ToTensor(),transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225]),
-                   ]),
+                    ]),
                        train=True,
                        seen=model.seen,
                        batch_size=args.batch_size,
@@ -168,14 +205,18 @@ def train(train_list, model, criterion, optimizer, epoch):
 
         img = img.cuda()
         img = Variable(img)
-        output = model(img)[:,:,:,:]
+        output = model(img)#[:,:,:,:]
 
+        # Desired is bcxy, we have bxyc
+        target = torch.transpose(target, 1, 3);
+        # Now we have bcyx, so swap x with y
+        target = torch.transpose(target, 2, 3);
         target = target.type(torch.FloatTensor).cuda()
         target = Variable(target)
 
-        print(f"OUTPUT SHAPE {output.shape}")
-        print(f"TARGET SHAPE {target[:, :, :].shape}")
-        loss = criterion(output, target[:, :, :])
+        # print(f"OUTPUT SHAPE {output.shape}")
+        # print(f"TARGET SHAPE {target.shape}")
+        loss = criterion(output, target)#[:, :, :])
 
         losses.update(loss.item(), img.size(0))
         optimizer.zero_grad()
@@ -194,8 +235,11 @@ def train(train_list, model, criterion, optimizer, epoch):
                    epoch, i, len(train_loader), batch_time=batch_time,
                    data_time=data_time, loss=losses))
             
-        # Append the average loss at the end of each epoch
-        if ((len(train_loader) - 1) == i): plt_losses.append(losses.avg);
+    # Append the average loss at the end of each epoch
+    # Also, calculate MAE
+    model.eval();
+    metrics_train.append([losses.avg, calc_mae(train_loader, model)]);
+
 
 def validate(val_list, model, criterion):
     print ('begin val')
@@ -207,41 +251,49 @@ def validate(val_list, model, criterion):
                                      std=[0.229, 0.224, 0.225]),
                    ]),  train=False),
     batch_size=1)
+    # batch_size=args.batch_size)
 
     model.eval()
+    mae = calc_mae(val_loader, model);
 
-    mae = 0
+    loss = 0.0;
 
     for i,(img, target) in enumerate(val_loader):
-        h,w = img.shape[2:4]
-        h_d = math.floor(h/2)
-        w_d = math.floor(w/2)
-        img_1 = Variable(img[:,:,:h_d,:w_d].cuda())
-        img_2 = Variable(img[:,:,:h_d,w_d:].cuda())
-        img_3 = Variable(img[:,:,h_d:,:w_d].cuda())
-        img_4 = Variable(img[:,:,h_d:,w_d:].cuda())
-        density_1 = model(img_1).data.cpu().numpy()
-        density_2 = model(img_2).data.cpu().numpy()
-        density_3 = model(img_3).data.cpu().numpy()
-        density_4 = model(img_4).data.cpu().numpy()
+        img = img.cuda()
+        img = Variable(img)
+        output = model(img)#[:,:,:,:]
 
-        pred_sum = density_1.sum()+density_2.sum()+density_3.sum()+density_4.sum()
+        # Desired is bcxy, we have bxyc
+        target = torch.transpose(target, 1, 3);
+        # Now we have bcyx, so swap x with y
+        target = torch.transpose(target, 2, 3);
+        target = target.type(torch.FloatTensor).cuda()
+        target = Variable(target)
 
-        mae += abs(pred_sum-target.sum())
+        loss += criterion(output, target)#[:, :, :])
 
-    mae = mae/len(val_loader)
-    print(' * MAE {mae:.3f} '
-              .format(mae=mae))
+    loss /= len(val_loader);
+
+
+    # print(' * MAE {mae:.3f} '
+    #           .format(mae=mae));
+    print(f" * MAE {mae:.3f} MSE LOSS {loss:.3f}");
 
     # Plot the MAE and loss for this epoch
-    plt_valmae.append(mae);
+    metrics_val.append([mae, loss]);
+    
 
-    plt.subplot(2,1,1).plot(range(len(plt_valmae)), plt_valmae);
-    plt.subplot(2,1,1).set_ylabel("MAE");
+    plt.subplot(2,1,1).plot(metrics_val);
+    plt.subplot(2,1,1).set_title("Validation Metrics");
+    plt.subplot(2,1,1).set_ylabel("Score");
     plt.subplot(2,1,1).set_xlabel("Epoch");
-    plt.subplot(2,1,2).plot(range(len(plt_losses)), plt_losses);
-    plt.subplot(2,1,2).set_ylabel("Loss");
+    plt.subplot(2,1,1).legend(["MAE", "MSE Loss"]);
+
+    plt.subplot(2,1,2).plot(metrics_train);
+    plt.subplot(2,1,2).set_title("Train Metrics");
+    plt.subplot(2,1,2).set_ylabel("Score");
     plt.subplot(2,1,2).set_xlabel("Epoch");
+    plt.subplot(2,1,1).legend(["MAE", "MSE Loss"]);
     plt.tight_layout();
     plt.savefig("training-progress.png");
     # non-blocking from https://stackoverflow.com/a/33050617
