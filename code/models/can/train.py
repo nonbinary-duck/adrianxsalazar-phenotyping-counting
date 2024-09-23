@@ -293,7 +293,7 @@ def validate(val_list, model, criterion):
     plt.subplot(2,1,2).set_title("Train Metrics");
     plt.subplot(2,1,2).set_ylabel("Score");
     plt.subplot(2,1,2).set_xlabel("Epoch");
-    plt.subplot(2,1,1).legend(["MAE", "MSE Loss"]);
+    plt.subplot(2,1,2).legend(["MAE", "MSE Loss"]);
     plt.tight_layout();
     plt.savefig("training-progress.png");
     # non-blocking from https://stackoverflow.com/a/33050617
