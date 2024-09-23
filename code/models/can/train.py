@@ -258,21 +258,21 @@ def validate(val_list, model, criterion):
 
     loss = 0.0;
 
-    for i,(img, target) in enumerate(val_loader):
-        img = img.cuda()
-        img = Variable(img)
-        output = model(img)#[:,:,:,:]
+    # for i,(img, target) in enumerate(val_loader):
+    #     img = img.cuda()
+    #     img = Variable(img)
+    #     output = model(img)#[:,:,:,:]
 
-        # Desired is bcxy, we have bxyc
-        target = torch.transpose(target, 1, 3);
-        # Now we have bcyx, so swap x with y
-        target = torch.transpose(target, 2, 3);
-        target = target.type(torch.FloatTensor).cuda()
-        target = Variable(target)
+    #     # Desired is bcxy, we have bxyc
+    #     target = torch.transpose(target, 1, 3);
+    #     # Now we have bcyx, so swap x with y
+    #     target = torch.transpose(target, 2, 3);
+    #     target = target.type(torch.FloatTensor).cuda()
+    #     target = Variable(target)
 
-        loss += criterion(output, target)#[:, :, :])
+    #     loss += criterion(output, target)#[:, :, :])
 
-    loss /= len(val_loader);
+    # loss /= len(val_loader);
 
 
     # print(' * MAE {mae:.3f} '
