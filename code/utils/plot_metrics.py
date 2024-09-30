@@ -18,8 +18,9 @@ print(met_df);
 met_mdf = met_df.melt("epoch", var_name="metric", value_name="value")
 
 sns.set_theme();
-sns.regplot(data=met_df.where(met_df.epoch > 10), x="epoch", y="val_mae", ax=plt.subplot(2,2,1));
-sns.regplot(data=met_df.where(met_df.epoch > 10), x="epoch", y="train_loss", ax=plt.subplot(2,2,2));
+sns.regplot(data=met_df.where(met_df.epoch > 10), x="epoch", y="val_mae", marker="x", ax=plt.subplot(2,2,1));
+sns.regplot(data=met_df.where(met_df.epoch > 10), x="epoch", y="train_loss", marker="x", ax=plt.subplot(2,2,2));
 sns.lineplot(data=met_mdf.where(met_mdf.epoch > 10), x="epoch", y="value", hue="metric", palette="flare", ax=plt.subplot(2,2,3));
 sns.lineplot(data=met_mdf.where(met_mdf.epoch < 10), x="epoch", y="value", hue="metric", palette="flare", ax=plt.subplot(2,2,4));
+plt.savefig("metrics.png", dpi=300);
 plt.show();
