@@ -24,7 +24,7 @@ import math
 import pandas as pd
 
 
-metrics = { "train_loss": [], "val_mse": [] };
+metrics = { "train_loss": [], "val_mae": [] };
 
 
 parser = argparse.ArgumentParser(description='PyTorch CANNet')
@@ -292,7 +292,7 @@ def validate(val_list, model, criterion):
     print(f" * MAE {mae:.3f}");
 
     # Save the metrics for this epoch
-    metrics['val_mse'].append(float(mae));
+    metrics['val_mae'].append(float(mae));
     met_df = pd.DataFrame(metrics);
     met_df.to_pickle( os.path.join( args.output, "metrics.pkl" ));
     met_df.to_csv( os.path.join( args.output, "metrics.csv" ) );
