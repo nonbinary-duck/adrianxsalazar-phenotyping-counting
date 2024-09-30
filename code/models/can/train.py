@@ -57,7 +57,7 @@ def main():
 
     args = parser.parse_args()
     args.lr = 1e-4
-    args.batch_size    = 3 #26
+    args.batch_size    = 12 #26
     args.decay         = 5*1e-4
     args.start_epoch   = 0
     args.epochs = 1000
@@ -221,7 +221,9 @@ def train(train_list, model, criterion, optimizer, epoch):
 
         # print(f"OUTPUT SHAPE {output.shape}")
         # print(f"TARGET SHAPE {target.shape}")
-        loss = criterion(output, target)#[:, :, :])
+        loss =  criterion(output[:, 0, :, :], target[:, 0, :, :])#[:, :, :])
+        loss += criterion(output[:, 1, :, :], target[:, 1, :, :])#[:, :, :])
+        loss += criterion(output[:, 2, :, :], target[:, 2, :, :])#[:, :, :])
 
         losses.update(loss.item(), img.size(0))
         optimizer.zero_grad()
@@ -240,11 +242,12 @@ def train(train_list, model, criterion, optimizer, epoch):
                    epoch, i, len(train_loader), batch_time=batch_time,
                    data_time=data_time, loss=losses))
             
-    print(f"All but MAE at {time.time() - epoch_head:.3f} seconds into epoch");
+    # print(f"All but MAE at {time.time() - epoch_head:.3f} seconds into epoch");
     # Append the average loss at the end of each epoch
     # Also, calculate MAE
     model.eval();
-    metrics_train.append([losses.avg, calc_mae(train_loader, model)]);
+    metrics_train.append([losses.avg, 0]);
+    # metrics_train.append([losses.avg, calc_mae(train_loader, model)]);
 
     print(f"Finished epoch {epoch}, lasting {time.time() - epoch_head:.3f} seconds");
     

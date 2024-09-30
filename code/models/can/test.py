@@ -76,14 +76,6 @@ for img_path in img_paths:
     img = img.resize( (int(img.size[0]/2), int(img.size[1]/2)), Image.BICUBIC );
     img = transform(img).cuda();
     img = img.unsqueeze(0)
-    # img_1 = Variable(img[:,:,:h_d,:w_d].cuda())
-    # img_2 = Variable(img[:,:,:h_d,w_d:].cuda())
-    # img_3 = Variable(img[:,:,h_d:,:w_d].cuda())
-    # img_4 = Variable(img[:,:,h_d:,w_d:].cuda())
-    # density_1 = model(img_1)#.data.cpu()#.numpy()
-    # density_2 = model(img_2)#.data.cpu()#.numpy()
-    # density_3 = model(img_3)#.data.cpu()#.numpy()
-    # density_4 = model(img_4)#.data.cpu()#.numpy()
     
     entire_img=Variable(img.cuda())
     entire_den=model(entire_img)
@@ -93,32 +85,7 @@ for img_path in img_paths:
     gt_file = h5py.File(os.path.join("all", img_path) + ".gt.h5")
     groundtruth = np.asarray(gt_file['density'])
     
-    ###################################################################
-    
-    #print("Predicted Count : ",int(output.detach().cpu().sum().numpy()))
-    #temp = np.asarray(output.detach().cpu().reshape(output.detach().cpu().shape[2],output.detach().cpu().shape[3]))
-    
-    # density_1_1=np.asarray(density_1.detach().cpu().reshape(density_1.detach().cpu().shape[2],density_1.detach().cpu().shape[3]))
-    # density_1_2=np.asarray(density_2.detach().cpu().reshape(density_2.detach().cpu().shape[2],density_2.detach().cpu().shape[3]))
-    # density_1_3=np.asarray(density_3.detach().cpu().reshape(density_3.detach().cpu().shape[2],density_3.detach().cpu().shape[3]))
-    # density_1_4=np.asarray(density_4.detach().cpu().reshape(density_4.detach().cpu().shape[2],density_4.detach().cpu().shape[3]))
-    # print("DENSHAPE", entire_den.shape)
     den=np.asarray(entire_den.reshape(entire_den.shape[1], entire_den.shape[2], entire_den.shape[3]))
-    
-    # img[:,:,:h_d,:w_d]=density_1
-    # img[:,:,:h_d,w_d:]=density_2
-    # img[:,:,h_d:,:w_d]=density_3
-    # img[:,:,h_d:,w_d:]=density_4
-    
-    # den_1=np.concatenate((density_1_1,density_1_2), axis=1)
-    # den_2=np.concatenate((density_1_3,density_1_4), axis=1)
-    #den=np.concatenate((den_1,den_2), axis=0)
-    
-    #print (temp.shape)
-    
-    # #replace image formats
-    # plain_file=plain_file.replace('.jpg','.png')
-    # plain_file=plain_file.replace('.jpeg','.png')
 
     
     # Remove the extension and store it
@@ -159,10 +126,7 @@ for img_path in img_paths:
         plt.savefig(os.path.join(vis_path, plain_file)+f"_output_{['r','g','b'][i]}.png",bbox_inches='tight', pad_inches = 0,dpi=300)
         plt.close()
     
-    # plt.imshow( density_1_1,cmap = c.jet)
-    # plt.axis('off')
-    # plt.savefig(os.path.join(vis_path, plain_file),bbox_inches='tight')
-    # plt.close()
+
 
     plt.imshow(np.multiply(groundtruth, 1/np.max(groundtruth)));
     plt.gca().set_axis_off()
@@ -172,7 +136,7 @@ for img_path in img_paths:
     plt.close()
     
     # This code needs to be replaced by automatically rendering and linking the boxed images into the dataset
-    plt.imshow(mpimg.imread( os.path.join("../", img_path + ".boxed.jpg")))
+    plt.imshow(mpimg.imread( os.path.join("../boxed", img_path + ".boxed.jpg")))
     plt.gca().set_axis_off()
     plt.axis('off')
     plt.margins(0,0)
