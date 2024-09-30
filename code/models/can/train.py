@@ -292,7 +292,7 @@ def validate(val_list, model, criterion):
     print(f" * MAE {mae:.3f}");
 
     # Save the metrics for this epoch
-    metrics['val_mse'].append(mae);
+    metrics['val_mse'].append(float(mae));
     met_df = pd.DataFrame(metrics);
     met_df.to_pickle( os.path.join( args.output, "metrics.pkl" ));
     met_df.to_csv( os.path.join( args.output, "metrics.csv" ) );
