@@ -21,12 +21,10 @@ import time
 
 import math
 
-import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
 
-metrics_train = [];
-metrics_val = [];
+
+metrics = { "train_loss": [], "val_mse": [] };
 
 
 parser = argparse.ArgumentParser(description='PyTorch CANNet')
@@ -246,7 +244,7 @@ def train(train_list, model, criterion, optimizer, epoch):
     # Append the average loss at the end of each epoch
     # Also, calculate MAE
     model.eval();
-    metrics_train.append([losses.avg, 0]);
+    metrics['train_loss'].append(losses.avg);
     # metrics_train.append([losses.avg, calc_mae(train_loader, model)]);
 
     print(f"Finished epoch {epoch}, lasting {time.time() - epoch_head:.3f} seconds");
@@ -271,8 +269,6 @@ def validate(val_list, model, criterion):
     model.eval()
     mae = calc_mae(val_loader, model);
 
-    loss = 0.0;
-
     # for i,(img, target) in enumerate(val_loader):
     #     img = img.cuda()
     #     img = Variable(img)
@@ -292,31 +288,13 @@ def validate(val_list, model, criterion):
 
     # print(' * MAE {mae:.3f} '
     #           .format(mae=mae));
-    print(f" * MAE {mae:.3f} MSE LOSS {loss:.3f}");
+    print(f" * MAE {mae:.3f}");
 
-    # Plot the MAE and loss for this epoch
-    metrics_val.append([mae, loss]);
-    
-
-    plt.subplot(2,1,1).plot(metrics_val);
-    plt.subplot(2,1,1).set_title("Validation Metrics");
-    plt.subplot(2,1,1).set_ylabel("Score");
-    plt.subplot(2,1,1).set_xlabel("Epoch");
-    plt.subplot(2,1,1).legend(["MAE", "MSE Loss"]);
-
-    plt.subplot(2,1,2).plot(metrics_train);
-    plt.subplot(2,1,2).set_title("Train Metrics");
-    plt.subplot(2,1,2).set_ylabel("Score");
-    plt.subplot(2,1,2).set_xlabel("Epoch");
-    plt.subplot(2,1,2).legend(["MAE", "MSE Loss"]);
-    plt.tight_layout();
-    plt.savefig("training-progress.png");
-    # non-blocking from https://stackoverflow.com/a/33050617
-    plt.draw();
-
-    print(f" = Finished validation lasting {time.time() - val_head:.3f} seconds");
-
-    plt.pause(0.1);
+    # Save the metrics for this epoch
+    metrics['val_mse'].append(mae);
+    met_df = pd.DataFrame(metrics);
+    met_df.to_hdf( os.path.join( args.output, "metrics.hdf5" ) );
+    met_df.to_hdf( os.path.join( args.output, "metrics.csv" ) );
 
     return mae
 
