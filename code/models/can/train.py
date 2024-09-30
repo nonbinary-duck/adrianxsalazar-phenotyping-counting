@@ -79,7 +79,8 @@ def main():
 
     model = model.cuda()
 
-    criterion = nn.MSELoss(size_average=False).cuda()
+    # criterion = nn.MSELoss(size_average=False).cuda()
+    criterion = nn.MSELoss(reduction="sum").cuda(); # (from docs): If the field size_average is set to False, the losses are instead summed for each minibatch
 
     optimizer = torch.optim.Adam(model.parameters(), args.lr,
                                     weight_decay=args.decay)
@@ -293,8 +294,8 @@ def validate(val_list, model, criterion):
     # Save the metrics for this epoch
     metrics['val_mse'].append(mae);
     met_df = pd.DataFrame(metrics);
-    met_df.to_hdf( os.path.join( args.output, "metrics.hdf5" ) );
-    met_df.to_hdf( os.path.join( args.output, "metrics.csv" ) );
+    met_df.to_pickle( os.path.join( args.output, "metrics.pkl" ));
+    met_df.to_csv( os.path.join( args.output, "metrics.csv" ) );
 
     return mae
 

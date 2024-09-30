@@ -23,7 +23,8 @@ class ContextualModule(nn.Module):
 
     def forward(self, feats):
         h, w = feats.size(2), feats.size(3)
-        multi_scales = [F.upsample(input=stage(feats), size=(h, w), mode='bilinear') for stage in self.scales]
+        # multi_scales = [F.upsample(input=stage(feats), size=(h, w), mode='bilinear') for stage in self.scales]
+        multi_scales = [F.interpolate(input=stage(feats), size=(h, w), mode='bilinear') for stage in self.scales]
         weights = [self.__make_weight(feats,scale_feature) for scale_feature in multi_scales]
         overall_features = [(multi_scales[0]*weights[0]+multi_scales[1]*weights[1]+multi_scales[2]*weights[2]+multi_scales[3]*weights[3])/(weights[0]+weights[1]+weights[2]+weights[3])]+ [feats]
         bottle = self.bottleneck(torch.cat(overall_features, 1))
@@ -42,7 +43,8 @@ class CANNet(nn.Module):
         # Make sure sigmoid is channel-wise 0-1 not whole tensor 0-1 (disregard)
         # self.output_layer = nn.Sequential(nn.Conv2d(64, 3, kernel_size=1), nn.Sigmoid())
         if not load_weights:
-            mod = models.vgg16(pretrained = True)
+            # mod = models.vgg16(pretrained = True)
+            mod = models.vgg16(weights=models.VGG16_Weights.DEFAULT)
             self._initialize_weights()
             for i, itm in enumerate(self.frontend.state_dict().items()):
                 itm[1].data[:] = list(mod.state_dict().items())[i][1].data[:]
