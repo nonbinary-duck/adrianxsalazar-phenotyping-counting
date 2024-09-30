@@ -1,5 +1,6 @@
 import random
 import os
+import PIL
 from PIL import Image
 import numpy as np
 import h5py
@@ -12,6 +13,10 @@ def load_data(img_path,train = True):
     img = Image.open( os.path.join("all", img_path)).convert('RGB')
     gt_file = h5py.File(os.path.join("all", img_path) + ".gt.h5",'r')
     target = np.asarray(gt_file['density'])
+
+    # Half the dimensions
+    target = cv2.resize(target,(math.floor(target.shape[1]/2), math.floor(target.shape[0]/2)),interpolation = cv2.INTER_CUBIC)*4
+    img = img.resize((target.shape[1], target.shape[0]), PIL.Image.BICUBIC);
 
     # if img.size != (4032, 3024):
     #     img=img.resize((4032, 3024))
