@@ -9,23 +9,44 @@ import numpy as np
 import argparse
 
 import random
+import math
 
 
 def visualise_density_map(path_image):
     """
     Show density plot with matplotlib
     """
-    plt.subplot(1,2,1).imshow(PIL.Image.open(path_image));
     
     gt = np.asarray( h5py.File(path_image + ".gt.h5",'r')['density'] );
 
-    print(np.sum(gt));
-    gt *= 1/np.max(gt);
+    path_image = os.path.join("boxed_imgs", path_image.replace("all/", "") + ".boxed.jpg");
 
-    print("SHAPE", gt.shape);
+    classes = gt.shape[2];
+
+    if (classes == 3):
+        print(np.sum(gt));
+        gt *= 1/np.max(gt);
+
+        print("SHAPE", gt.shape);
+        
+        plt.subplot(1,2,1).imshow(PIL.Image.open(path_image));
+        plt.subplot(1,2,2).imshow(gt);
+        plt.show();
+    else:
+        length = math.ceil( math.pow( classes , 0.5));
     
-    plt.subplot(1,2,2).imshow(gt);
-    plt.show();
+        # Draw the image
+        plt.imshow(PIL.Image.open(path_image));
+
+        # Make a new window
+        plt.figure();
+        
+        for c in range(classes):
+            ax = plt.subplot(length,length,c+1);
+            ax.imshow( gt[:, :, c] );
+            ax.set_title(f"Class {c}", fontsize=7);
+            
+        plt.show();
 
 
 if __name__ == '__main__':

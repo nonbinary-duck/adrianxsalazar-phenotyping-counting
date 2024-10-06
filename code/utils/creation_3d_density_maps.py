@@ -21,6 +21,7 @@ import argparse
 import scipy.spatial
 from scipy.ndimage import gaussian_filter
 
+import warnings
 import math
 import cv2
 
@@ -41,7 +42,7 @@ class create_density_dataset():
         density = np.zeros(gt.shape, dtype=np.float32)
         gt_count = np.count_nonzero(gt)
         if gt_count == 0:
-            return density
+            return density, 0.0, 0.0;
 
         pts = np.array(list(zip(np.nonzero(gt)[1], np.nonzero(gt)[0])))
         leafsize = 3
@@ -63,9 +64,11 @@ class create_density_dataset():
 
             density += gaussian_filter(pt2d, sigma, mode='constant')
 
-        print(f"original count: {np.sum(np.sum(gt))}, new: {np.sum(np.sum(density))}");
+        d_count = np.sum(np.sum(density));
+        o_count = np.sum(np.sum(gt));
+        print(f"original count: {o_count}, new: {d_count}");
         print ('done.')
-        return density
+        return density, d_count, o_count;
 
 
     def create_map(self, txt_format=True):
@@ -78,7 +81,15 @@ class create_density_dataset():
         json_file.close();
 
 
-        for image in dataset["images"]:
+        for i, image in enumerate(dataset["images"]):
+            progress_line = f"= BEGIN {i+1}/{len(dataset['images'])} =";
+            print("\n")
+            print("="*len(progress_line))
+            print(progress_line)
+            print("="*len(progress_line))
+            print("\n")
+            
+
             # Get the image
             img_path = os.path.join(os.path.split(self.dataset_path)[0], "all", image["file_name"]);
             img      = plt.imread(img_path);
@@ -87,10 +98,12 @@ class create_density_dataset():
 
             k = np.zeros((img.shape[0], img.shape[1], self.class_count));
 
+            total_d_count = 0.0;
+            total_o_count = 0.0;
+
             for c in range(self.class_count):
                 # Make an image with a single 1.0 value pixel per bbox centroid
                 minik = np.zeros((math.floor(img.shape[0] / self.downsize_ratio), math.floor(img.shape[1] / self.downsize_ratio)));
-
                 gt=np.loadtxt(img_path + (f"_c{c}.txt" if (self.class_count != 1) else ".txt"));
 
                 for i in range(0,len(gt)):
@@ -98,8 +111,12 @@ class create_density_dataset():
                         minik[int(math.floor(gt[i][1] / self.downsize_ratio)),int(math.floor(gt[i][0] / self.downsize_ratio))]=1.0
 
                 # Use the gaussian kernel
-                print(img_path)
-                minik = self.gaussian_filter_density(minik);
+                print(f"{img_path}:{c}")
+
+                minik, d_count, o_count = self.gaussian_filter_density(minik);
+                
+                total_o_count += o_count;
+                total_d_count += d_count;
 
                 # Resize to full and combine
                 k[:, :, c] = cv2.resize(minik, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_CUBIC)/(math.pow(self.downsize_ratio, 2));
@@ -109,6 +126,10 @@ class create_density_dataset():
             with h5py.File(x, 'w') as hf:
                 hf.create_dataset("density", data=k, compression='gzip', compression_opts=5);
 
+            progress_line = f"= FINISHED. GT_COUNT {total_o_count}, NEW_COUNT {total_d_count} =";
+            print("="*len(progress_line))
+            print(progress_line)
+            print("="*len(progress_line))
 
     def visualise_density_map(self,path_image):
         """
@@ -155,4 +176,8 @@ if __name__ == '__main__':
     #     density_map=create_density_dataset(args.i, beta=args.b)
     # else:
     density_map=create_density_dataset(args.i, args.c, args.d)
-    density_map.create_map()
+
+    # Ignore warnings from https://stackoverflow.com/a/19167903
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        density_map.create_map()
