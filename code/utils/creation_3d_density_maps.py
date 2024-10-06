@@ -87,7 +87,6 @@ class create_density_dataset():
             print("="*len(progress_line))
             print(progress_line)
             print("="*len(progress_line))
-            print("\n")
             
 
             # Get the image
@@ -95,41 +94,49 @@ class create_density_dataset():
             img      = plt.imread(img_path);
             # imshape  = (math.floor(img.shape[0] / self.downsize_ratio), math.floor(img.shape[1] / self.downsize_ratio));
 
+            if (os.path.exists(img_path + ".gt.h5")):
+                print(f"SKIPPING {img_path} AS THERE EXISTS ALREADY DENSITY\n\n");
+                continue;
+
 
             k = np.zeros((img.shape[0], img.shape[1], self.class_count));
 
             total_d_count = 0.0;
             total_o_count = 0.0;
 
-            for c in range(self.class_count):
-                # Make an image with a single 1.0 value pixel per bbox centroid
-                minik = np.zeros((math.floor(img.shape[0] / self.downsize_ratio), math.floor(img.shape[1] / self.downsize_ratio)));
-                gt=np.loadtxt(img_path + (f"_c{c}.txt" if (self.class_count != 1) else ".txt"));
+            try:
+                for c in range(self.class_count):
+                    # Make an image with a single 1.0 value pixel per bbox centroid
+                    minik = np.zeros((math.floor(img.shape[0] / self.downsize_ratio), math.floor(img.shape[1] / self.downsize_ratio)));
+                    gt=np.loadtxt(img_path + (f"_c{c}.txt" if (self.class_count != 1) else ".txt"));
 
-                for i in range(0,len(gt)):
-                    if int(gt[i][1])<img.shape[0] and int(gt[i][0])<img.shape[1]:
-                        minik[int(math.floor(gt[i][1] / self.downsize_ratio)),int(math.floor(gt[i][0] / self.downsize_ratio))]=1.0
+                    for i in range(0,len(gt)):
+                        if int(gt[i][1])<img.shape[0] and int(gt[i][0])<img.shape[1]:
+                            minik[int(math.floor(gt[i][1] / self.downsize_ratio)),int(math.floor(gt[i][0] / self.downsize_ratio))]=1.0
 
-                # Use the gaussian kernel
-                print(f"{img_path}:{c}")
+                    # Use the gaussian kernel
+                    print(f"{img_path}:{c}")
 
-                minik, d_count, o_count = self.gaussian_filter_density(minik);
-                
-                total_o_count += o_count;
-                total_d_count += d_count;
+                    minik, d_count, o_count = self.gaussian_filter_density(minik);
+                    
+                    total_o_count += o_count;
+                    total_d_count += d_count;
 
-                # Resize to full and combine
-                k[:, :, c] = cv2.resize(minik, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_CUBIC)/(math.pow(self.downsize_ratio, 2));
+                    # Resize to full and combine
+                    k[:, :, c] = cv2.resize(minik, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_CUBIC)/(math.pow(self.downsize_ratio, 2));
 
-            # Save completed density map
-            x=img_path + ".gt.h5";
-            with h5py.File(x, 'w') as hf:
-                hf.create_dataset("density", data=k, compression='gzip', compression_opts=5);
+                # Save completed density map
+                x=img_path + ".gt.h5";
+                with h5py.File(x, 'w') as hf:
+                    hf.create_dataset("density", data=k, compression='gzip', compression_opts=5);
 
-            progress_line = f"= FINISHED. GT_COUNT {total_o_count}, NEW_COUNT {total_d_count} =";
-            print("="*len(progress_line))
-            print(progress_line)
-            print("="*len(progress_line))
+                progress_line = f"= FINISHED. GT_COUNT {total_o_count}, NEW_COUNT {total_d_count} =";
+                print("="*len(progress_line))
+                print(progress_line)
+                print("="*len(progress_line))
+            except:
+                print(f"FAILED TO PRODUCE DENSITY FOR {img_path}. MOVING ON\n\n");
+        
 
     def visualise_density_map(self,path_image):
         """
