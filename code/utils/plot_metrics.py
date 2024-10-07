@@ -20,10 +20,23 @@ def plot_metrics():
 
     sns.set_theme();
     plt.figure(figsize=(16,9), dpi=72);
-    sns.regplot(data=met_df.where(met_df.epoch > 10), x="epoch", y="val_mae", marker="x", ax=plt.subplot(2,2,1));
-    sns.regplot(data=met_df.where(met_df.epoch > 10), x="epoch", y="train_loss", marker="x", ax=plt.subplot(2,2,2));
-    sns.lineplot(data=met_mdf.where(met_mdf.epoch > 10), x="epoch", y="value", hue="metric", palette="flare", ax=plt.subplot(2,2,3));
-    sns.lineplot(data=met_mdf.where(met_mdf.epoch < 10), x="epoch", y="value", hue="metric", palette="flare", ax=plt.subplot(2,2,4));
+    ax = plt.subplot(2,2,1);
+    ax.set_title("Validation trend after 9th epoch")
+    sns.regplot(data=met_df.where(met_df.epoch >= 10), x="epoch", y="val_mae", marker="x", ax=ax);
+
+    ax = plt.subplot(2,2,2);
+    ax.set_title("Loss function trend after 9th epoch")
+    sns.regplot(data=met_df.where(met_df.epoch >= 10), x="epoch", y="train_loss", marker="x", ax=ax);
+
+    ax = plt.subplot(2,2,3);
+    ax.set_title("Performance after 9th epoch")
+    sns.lineplot(data=met_mdf.where(met_mdf.epoch >= 10), x="epoch", y="value", hue="metric", palette="flare", ax=ax);
+
+    ax = plt.subplot(2,2,4);
+    ax.set_title("Performance before 10th epoch")
+    sns.lineplot(data=met_mdf.where(met_mdf.epoch < 10), x="epoch", y="value", hue="metric", palette="flare", ax=ax);
+
+    plt.tight_layout();
     plt.savefig("metrics.png", dpi=300);
     plt.show();
 
