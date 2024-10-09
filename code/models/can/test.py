@@ -41,9 +41,11 @@ parser.add_argument('output', metavar='VAL',
 args = parser.parse_args()
 
 def save_dictionary(dictpath_json, dictionary_data):
-    a_file = open(dictpath_json, "w")
-    json.dump(dictionary_data, a_file, indent=4)
-    a_file.close()
+    dictpath_json = os.path.join(args.output, dictpath_json);
+    
+    json_file = open(dictpath_json, "w")
+    json.dump(dictionary_data, json_file, indent=4)
+    json_file.close()
 
 
 vis_path = os.path.join(args.output,'visual_results');
@@ -104,7 +106,7 @@ metric_class_gt      = [ [] for i in class_lut ];
 metric_img_out       = [];
 metric_img_gt        = [];
 
-for img_path in img_paths:
+for img_path in img_paths[0:2]:
     plain_file=os.path.basename(img_path);
     img = Image.open(os.path.join("all", img_path)).convert('RGB');
     # Half (and floor) image size as that's what the data loader does
@@ -124,6 +126,14 @@ for img_path in img_paths:
     # Remove the extension and store it
     plain_file, plain_file_ext = os.path.splitext(plain_file);
 
+
+    new_img_infoline = f"= For image {plain_file} =";
+    print("");
+    print("=" * len(new_img_infoline));
+    print(new_img_infoline);
+    print("=" * len(new_img_infoline));
+    print(plain_file);
+
     # Cumulative density (on a single channel) for the whole image
     out_all_p  = np.zeros(den[0].shape);
     out_all_gt = np.zeros(groundtruth[:, :, 0].shape);
@@ -138,8 +148,8 @@ for img_path in img_paths:
         out_gt   = groundtruth[:, :, i] if (not is_agg) else out_all_gt;
 
         # Get counts
-        count_o  = np.sum(out_pred);
-        count_gt = np.sum(out_gt);
+        count_o  = float(np.sum(out_pred));
+        count_gt = float(np.sum(out_gt));
 
         # Record stats, build up metaclass
         if (not is_agg):
@@ -151,6 +161,10 @@ for img_path in img_paths:
 
             metric_class_out[i].append(count_o);
             metric_class_gt[i].append(count_gt);
+        else:
+            # Add the all metaclass to total predictions
+            metric_img_out.append(count_o);
+            metric_img_gt.append(count_gt);
 
         ax = plt.subplot(1,2,1);
         ax.set_title(f"output count={count_o}");
@@ -165,34 +179,56 @@ for img_path in img_paths:
         plt.savefig(os.path.join(vis_path, plain_file)+f"_out_{i}_{cname}.png", pad_inches=0.5, bbox_inches='tight');
         plt.close();
     
+        if (not is_agg): print(f"  c_{i}: predicted: {count_o:.4f}, gt: {count_gt:.4f}");
+
+    
     # Save model input
-    plt.imshow(mpimg.imread( os.path.join("boxed_imgs", img_path + ".boxed.jpg")))
-    plt.savefig(os.path.join(vis_path, plain_file + '_input' + plain_file_ext),bbox_inches='tight', pad_inches = 0.5, dpi=150)
+    plt.figure(figsize=(16,9), dpi=300);
+    plt.imshow(mpimg.imread( os.path.join("boxed_imgs", img_path + ".boxed.jpg")));
+    plt.savefig(os.path.join(vis_path, plain_file + '_input' + plain_file_ext),bbox_inches='tight', pad_inches = 0.5, dpi=300);
     plt.close();
 
     sum_pred = np.sum(den);
     sum_gt   = np.sum(groundtruth);
+    dictionary_counts[plain_file] = { "pred": float(sum_pred), "gt": float(sum_gt) };
 
-    
-    dictionary_counts[plain_file]={ "pred": float(sum_pred), "gt": float(sum_gt) };#round(abs(pred_sum),3)
+    print(f"  c_ALL: predicted: {sum_pred:.4f}, gt: {sum_gt:.4f}");
 
-    print (f"For image {plain_file}");
-    for i in range(3):
-        print(f"  c_{i}: predicted: {den[i, :, :].sum()}, gt: {np.sum(groundtruth[:, :, i])}\n");
-
-    print(f"  c_ALL: predicted: {pred_sum}, gt: {np.sum(groundtruth)}");
-
-    pred.append(pred_sum)
-
-    gt.append(np.sum(groundtruth))
+    pred.append(sum_pred);
+    gt.append(sum_gt);
 
 
-mae = mean_absolute_error(pred,gt)
-rmse = np.sqrt(mean_squared_error(pred,gt))
+mae = mean_absolute_error(pred,gt);
+rmse = np.sqrt(mean_squared_error(pred,gt));
 
-save_dictionary(os.path.join(args.output,"dic_restults.json"),dictionary_counts)
+save_dictionary("dic_restults.json", dictionary_counts);
 
-print('MAE: ',mae)
-print('RMSE: ',rmse)
-results=np.array([mae,rmse])
-np.savetxt(os.path.join(args.output,"restults.txt"),results,delimiter=',')
+# # Value of output per class (sum of all)
+# metric_class_val_out = [ 0 for i in class_lut ];
+# metric_class_val_gt  = [ 0 for i in class_lut ];
+# # Every instance of a count, per class
+# metric_class_out     = [ [] for i in class_lut ];
+# metric_class_gt      = [ [] for i in class_lut ];
+# # Every instance of a prediction (over all classes)
+# metric_img_out       = [];
+# metric_img_gt        = [];
+save_dictionary("metrics_data.json", {
+    "class_val_out": metric_class_val_out,
+    "class_val_gt":  metric_class_val_gt,
+    "class_out":     metric_class_out,
+    "class_gt":      metric_class_gt,
+    "img_out":       metric_img_out,
+    "img_gt":        metric_img_gt
+});
+
+print('MAE: ',mae);
+print('RMSE: ',rmse);
+results=np.array([mae,rmse]);
+np.savetxt(os.path.join(args.output,"restults.txt"),results,delimiter=',');
+
+
+for i, cname in enumerate(class_lut):
+    mae = mean_absolute_error(metric_class_out[i],metric_class_gt[i]);
+    rmse = np.power(mean_squared_error(metric_class_out[i],metric_class_gt[i]), 0.5);
+    print(f"\n{i:02d} - {cname}\n  == MAE: {mae:.4f}\n  == RMSE: {rmse:.4f}\n  == count_gt: {metric_class_val_gt[i]:.4f}\n  == count_out: {metric_class_val_out[i]:.4f}");
+
