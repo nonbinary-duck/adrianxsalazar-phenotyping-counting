@@ -124,36 +124,57 @@ for img_path in img_paths:
     # Remove the extension and store it
     plain_file, plain_file_ext = os.path.splitext(plain_file);
 
+    # Cumulative density (on a single channel) for the whole image
+    out_all_p  = np.zeros(den[0].shape);
+    out_all_gt = np.zeros(groundtruth[:, :, 0].shape);
+
     # Save individually the channels of GT and output
-    for i, cname in enumerate(class_lut):
+    for i, cname in enumerate(class_lut + ["ALL_CLASSES"]):
         plt.figure(figsize=(16,9), dpi=150);
 
-        count_o  = np.sum(np.sum(den[i]));
-        count_gt = np.sum(np.sum(groundtruth[:, :, i]));
+        # Select if we're dealing with the final metaclass
+        is_agg = cname == "ALL_CLASSES";
+        out_pred = den[i] if (not is_agg) else out_all_p;
+        out_gt   = groundtruth[:, :, i] if (not is_agg) else out_all_gt;
 
-        metric_class_val_out[i] += count_o;
-        metric_class_val_gt[i]  += count_gt;
+        # Get counts
+        count_o  = np.sum(out_pred);
+        count_gt = np.sum(out_gt);
+
+        # Record stats, build up metaclass
+        if (not is_agg):
+            out_all_p += den[i];
+            out_all_gt += groundtruth[:, :, i];
+
+            metric_class_val_out[i] += count_o;
+            metric_class_val_gt[i]  += count_gt;
+
+            metric_class_out[i].append(count_o);
+            metric_class_gt[i].append(count_gt);
 
         ax = plt.subplot(1,2,1);
         ax.set_title(f"output count={count_o}");
-        visden = ax.imshow(den[i], cmap=c.plasma);
+        visden = ax.imshow(out_pred, cmap=c.plasma);
         ax.get_figure().colorbar(visden, ax=ax, location="bottom");
 
         ax = plt.subplot(1,2,2);
         ax.set_title(f"gt count={count_gt}");
-        visden = ax.imshow(groundtruth[:, :, i], cmap=c.plasma);
+        visden = ax.imshow(out_gt, cmap=c.plasma);
         ax.get_figure().colorbar(visden, ax=ax, location="bottom");
         
         plt.savefig(os.path.join(vis_path, plain_file)+f"_out_{i}_{cname}.png", pad_inches=0.5, bbox_inches='tight');
+        plt.close();
     
     # Save model input
     plt.imshow(mpimg.imread( os.path.join("boxed_imgs", img_path + ".boxed.jpg")))
     plt.savefig(os.path.join(vis_path, plain_file + '_input' + plain_file_ext),bbox_inches='tight', pad_inches = 0.5, dpi=150)
+    plt.close();
 
-    #######################################################################
+    sum_pred = np.sum(den);
+    sum_gt   = np.sum(groundtruth);
+
     
-    pred_sum = den.sum();#density_1.sum()+density_2.sum()+density_3.sum()+density_4.sum()
-    dictionary_counts[plain_file]={ "pred": float(pred_sum), "gt": float(np.sum(groundtruth)) };#round(abs(pred_sum),3)
+    dictionary_counts[plain_file]={ "pred": float(sum_pred), "gt": float(sum_gt) };#round(abs(pred_sum),3)
 
     print (f"For image {plain_file}");
     for i in range(3):
