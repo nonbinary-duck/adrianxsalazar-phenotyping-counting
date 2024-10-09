@@ -106,7 +106,7 @@ metric_class_gt      = [ [] for i in class_lut ];
 metric_img_out       = [];
 metric_img_gt        = [];
 
-for img_path in img_paths[0:2]:
+for img_path in img_paths:
     plain_file=os.path.basename(img_path);
     img = Image.open(os.path.join("all", img_path)).convert('RGB');
     # Half (and floor) image size as that's what the data loader does
