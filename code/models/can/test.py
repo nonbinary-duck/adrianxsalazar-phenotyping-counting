@@ -12,12 +12,13 @@ from sklearn.metrics import mean_squared_error,mean_absolute_error
 from torchvision import transforms
 import argparse
 import json
+import matplotlib
+matplotlib.use('Agg');
+
 import matplotlib.image as mpimg
 from matplotlib import pyplot as plt
 from matplotlib import cm as c
-import matplotlib
-matplotlib.use('Agg')
-plt.style.use('classic')
+
 
 import shutil
 
@@ -44,25 +45,17 @@ def save_dictionary(dictpath_json, dictionary_data):
     json.dump(dictionary_data, a_file, indent=4)
     a_file.close()
 
-with open(args.test_json, 'r') as outfile:
-    img_paths = json.load(outfile)
-
-model = CANNet()
-
-model = model.cuda()
-
-
 
 vis_path = os.path.join(args.output,'visual_results');
-
 if (os.path.isdir(vis_path)): shutil.rmtree(vis_path, True);
-
 if (os.path.exists(vis_path)):
     raise RuntimeError(f"Output path [{vis_path}] exists but is NOT directory, fatal error");
 os.mkdir(vis_path);
 
 
 checkpoint = torch.load(os.path.join(args.output,'model_best.pth.tar'))
+model = CANNet()
+model = model.cuda()
 model.load_state_dict(checkpoint['state_dict'])
 model.eval()
 
@@ -71,82 +64,91 @@ gt = []
 
 dictionary_counts={}
 
+
+# Testing images
+img_paths = [];
+with open(args.test_json, 'r') as outfile:
+    img_paths = json.load(outfile)
+
+# Look-up table for classes
+class_lut=[];
+with open( os.path.join(os.path.dirname(args.test_json), "dataset.json") , 'r') as outfile:
+    class_categories = json.load(outfile)["categories"];
+
+    # Make a sequential list of 
+    for i, cat in enumerate(class_categories):
+        # Don't implement sorting by id
+        if (i != cat["id"]): raise RuntimeError("Categories aren't sorted by id in the dataset JSON. Sort them above this exception or when you make the dataset (or comment this line out)");
+    
+        # We "know" the classes in the category list are in the order used to generate the ground-truth images for model. Add them to the LUT in that order
+        class_lut.append(
+            # Also make the categories make me happy
+            cat["name"].replace("/", "-").replace(" ", "_").lower()
+        );
+
+classes = h5py.File(os.path.join("all", img_paths[0]) + ".gt.h5")['density'].shape[2];
+
+
+print(f"Detected {classes}:");
+for i, cname in enumerate(class_lut):
+    print(f"  {i:02d}: {cname}");
+
+
+# Value of output per class (sum of all)
+metric_class_val_out = [ 0 for i in class_lut ];
+metric_class_val_gt  = [ 0 for i in class_lut ];
+# Every instance of a count, per class
+metric_class_out     = [ [] for i in class_lut ];
+metric_class_gt      = [ [] for i in class_lut ];
+# Every instance of a prediction (over all classes)
+metric_img_out       = [];
+metric_img_gt        = [];
+
 for img_path in img_paths:
-    plain_file=os.path.basename(img_path)
+    plain_file=os.path.basename(img_path);
     img = Image.open(os.path.join("all", img_path)).convert('RGB');
-    # Half (and floor) image size to save VRAM
+    # Half (and floor) image size as that's what the data loader does
     img = img.resize( (int(img.size[0]/2), int(img.size[1]/2)), Image.BICUBIC );
     img = transform(img).cuda();
-    img = img.unsqueeze(0)
+    img = img.unsqueeze(0);
     
-    entire_img=Variable(img.cuda())
-    entire_den=model(entire_img)
-    entire_den=entire_den.detach().cpu();
-    
-    pure_name = os.path.splitext(os.path.basename(img_path))[0]
-    gt_file = h5py.File(os.path.join("all", img_path) + ".gt.h5")
-    groundtruth = np.asarray(gt_file['density'])
-    
-    den=np.asarray(entire_den.reshape(entire_den.shape[1], entire_den.shape[2], entire_den.shape[3]))
+    entire_img=Variable(img.cuda());
+    entire_den=model(entire_img).detach().cpu();
+    # Stored as [batch, class, x, y]
+    den=np.asarray(entire_den[0]);
 
+    
+    groundtruth = h5py.File(os.path.join("all", img_path) + ".gt.h5")['density'];
+    
     
     # Remove the extension and store it
     plain_file, plain_file_ext = os.path.splitext(plain_file);
+
+    # Save individually the channels of GT and output
+    for i, cname in enumerate(class_lut):
+        plt.figure(figsize=(16,9), dpi=150);
+
+        count_o  = np.sum(np.sum(den[i]));
+        count_gt = np.sum(np.sum(groundtruth[:, :, i]));
+
+        metric_class_val_out[i] += count_o;
+        metric_class_val_gt[i]  += count_gt;
+
+        ax = plt.subplot(1,2,1);
+        ax.set_title(f"output count={count_o}");
+        visden = ax.imshow(den[i], cmap=c.plasma);
+        ax.get_figure().colorbar(visden, ax=ax, location="bottom");
+
+        ax = plt.subplot(1,2,2);
+        ax.set_title(f"gt count={count_gt}");
+        visden = ax.imshow(groundtruth[:, :, i], cmap=c.plasma);
+        ax.get_figure().colorbar(visden, ax=ax, location="bottom");
+        
+        plt.savefig(os.path.join(vis_path, plain_file)+f"_out_{i}_{cname}.png", pad_inches=0.5, bbox_inches='tight');
     
-    # Clip to range 0-inf.
-    visden = np.add(den, np.abs(np.min(den)) );
-    # Clip to range 0-1
-    visden = np.multiply(visden, 1/np.max(visden));
-    # Swap from cxy to xyc
-    visden = np.transpose(visden, (1, 2, 0));
-    # Plot it
-    
-    plt.imshow(visden);
-    # Save it
-    plt.gca().set_axis_off()
-    plt.axis('off')
-    plt.margins(0,0)
-    plt.savefig(os.path.join(vis_path, plain_file)+"_output.png",bbox_inches='tight', pad_inches = 0,dpi=300)
-    plt.close()
-
-    
-
-    # Save individually the channels
-    for i in range(3):
-        plt.imshow(den[i], cmap=c.plasma);
-        plt.gca().set_axis_off()
-        plt.axis('off')
-        plt.margins(0,0)
-        plt.savefig(os.path.join(vis_path, plain_file)+f"_output_{i}.png",bbox_inches='tight', pad_inches = 0,dpi=300)
-        plt.close()
-
-        # Do colour (isolate the channel so you can see the composite components)
-        visden_temp = np.zeros(visden.shape);
-        visden_temp[:, :, i] = visden[:, :, i];
-
-        plt.imshow(visden_temp);
-        plt.gca().set_axis_off()
-        plt.axis('off')
-        plt.margins(0,0)
-        plt.savefig(os.path.join(vis_path, plain_file)+f"_output_{['r','g','b'][i]}.png",bbox_inches='tight', pad_inches = 0,dpi=300)
-        plt.close()
-    
-
-
-    plt.imshow(np.multiply(groundtruth, 1/np.max(groundtruth)));
-    plt.gca().set_axis_off()
-    plt.axis('off')
-    plt.margins(0,0)
-    plt.savefig(os.path.join(vis_path, plain_file + "_gt")+".png",bbox_inches='tight', pad_inches = 0,dpi=300)
-    plt.close()
-    
-    # This code needs to be replaced by automatically rendering and linking the boxed images into the dataset
+    # Save model input
     plt.imshow(mpimg.imread( os.path.join("boxed_imgs", img_path + ".boxed.jpg")))
-    plt.gca().set_axis_off()
-    plt.axis('off')
-    plt.margins(0,0)
-    plt.savefig(os.path.join(vis_path, plain_file + '_input' + plain_file_ext),bbox_inches='tight', pad_inches = 0, dpi=300)
-    plt.close()
+    plt.savefig(os.path.join(vis_path, plain_file + '_input' + plain_file_ext),bbox_inches='tight', pad_inches = 0.5, dpi=150)
 
     #######################################################################
     
