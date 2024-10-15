@@ -85,6 +85,9 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), args.lr,
                                     weight_decay=args.decay)
 
+    # Try to figure out what this sigmoid thing is
+    torch.autograd.detect_anomaly(check_nan=True);
+
 
     ###########
     if args.best:
